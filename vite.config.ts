@@ -13,26 +13,28 @@ export default defineConfig({
         name: 'Drum & Bass Sequencer',
         short_name: 'D&B Sequencer',
         description: 'An interactive drum machine and sequencer built with React, TypeScript, and Tailwind CSS. Create beats and basslines, adjust the tempo, and press play to hear your creation. Features classic drum sounds and a sawtooth synthesizer in a sleek, modern interface.',
-        theme_color: '#06b6d4',
+        theme_color: '#0b1121',
         background_color: '#111827',
         display: 'standalone',
-        start_url: '.',
+        scope: '/',
+        start_url: '/',
         icons: [
           {
-            src: 'favicon.svg',
+            src: '/favicon.svg',
             sizes: 'any',
             type: 'image/svg+xml',
             purpose: 'any'
           },
           {
-            src: 'pwa-192x192.png',
+            src: '/favicon.svg',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/svg+xml',
+            purpose: 'any maskable'
           },
           {
-            src: 'pwa-512x512.png',
+            src: '/favicon.svg',
             sizes: '512x512',
-            type: 'image/png',
+            type: 'image/svg+xml',
             purpose: 'any maskable'
           }
         ]
