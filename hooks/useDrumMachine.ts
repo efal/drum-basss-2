@@ -15,18 +15,18 @@ const getFrequency = (noteIndex: number, octave: number): number => {
 
 // Helper to generate a simple reverb impulse response
 const createReverbImpulseResponse = async (audioContext: AudioContext): Promise<AudioBuffer> => {
-    const sampleRate = audioContext.sampleRate;
-    const duration = 2; // seconds
-    const decay = 3;
-    const impulse = audioContext.createBuffer(2, duration * sampleRate, sampleRate);
-    const left = impulse.getChannelData(0);
-    const right = impulse.getChannelData(1);
-    for (let i = 0; i < impulse.length; i++) {
-        const n = impulse.length - i;
-        left[i] = (Math.random() * 2 - 1) * Math.pow(n / impulse.length, decay);
-        right[i] = (Math.random() * 2 - 1) * Math.pow(n / impulse.length, decay);
-    }
-    return impulse;
+  const sampleRate = audioContext.sampleRate;
+  const duration = 2; // seconds
+  const decay = 3;
+  const impulse = audioContext.createBuffer(2, duration * sampleRate, sampleRate);
+  const left = impulse.getChannelData(0);
+  const right = impulse.getChannelData(1);
+  for (let i = 0; i < impulse.length; i++) {
+    const n = impulse.length - i;
+    left[i] = (Math.random() * 2 - 1) * Math.pow(n / impulse.length, decay);
+    right[i] = (Math.random() * 2 - 1) * Math.pow(n / impulse.length, decay);
+  }
+  return impulse;
 };
 
 
@@ -35,14 +35,14 @@ export const useSequencer = () => {
   const [isReady, setIsReady] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [loadingMessage, setLoadingMessage] = useState<string>('');
-  
+
   // --- Drum State ---
   const [drumGrid, setDrumGrid] = useState<DrumGrid>(createDrumGrid(NUM_TRACKS, NUM_STEPS));
   const [selectedSounds, setSelectedSounds] = useState<DrumSound[]>(INITIAL_SOUNDS);
   const [trackVolumes, setTrackVolumes] = useState<number[]>(Array(NUM_TRACKS).fill(0.8));
   const [trackPans, setTrackPans] = useState<number[]>(Array(NUM_TRACKS).fill(0));
   const [soloedTracks, setSoloedTracks] = useState<boolean[]>(Array(NUM_TRACKS).fill(false));
-  
+
   // --- Synth State ---
   const [pianoRollGrid, setPianoRollGrid] = useState<PianoRollGrid>(createPianoRollGrid(NUM_NOTES, NUM_STEPS));
   const [octave, setOctave] = useState<number>(3);
@@ -50,7 +50,7 @@ export const useSequencer = () => {
   const [synthPan, setSynthPan] = useState<number>(0);
   const [synthType, setSynthType] = useState<OscillatorType>('sawtooth');
   const [noteDuration, setNoteDuration] = useState<number>(4);
-  
+
   // --- Effects State ---
   const [filterType, setFilterType] = useState<BiquadFilterType>('lowpass');
   const [filterCutoff, setFilterCutoff] = useState<number>(8000);
@@ -70,9 +70,9 @@ export const useSequencer = () => {
   const buffersRef = useRef<AudioBuffers>({});
   const playbackIntervalRef = useRef<number | null>(null);
   const previewSourceRef = useRef<AudioBufferSourceNode | null>(null);
-  
+
   // --- Audio Node Refs ---
-  const drumTrackChannelsRef = useRef<{gain: GainNode, panner: StereoPannerNode}[]>([]);
+  const drumTrackChannelsRef = useRef<{ gain: GainNode, panner: StereoPannerNode }[]>([]);
   const effectsInputRef = useRef<GainNode | null>(null);
   const filterNodeRef = useRef<BiquadFilterNode | null>(null);
   const delayNodeRef = useRef<DelayNode | null>(null);
@@ -96,58 +96,58 @@ export const useSequencer = () => {
     if (audioContextRef.current.state === 'suspended') {
       await audioContextRef.current.resume();
     }
-    
+
     // --- Create and connect nodes only once ---
     if (!effectsInputRef.current) {
-        const audioContext = audioContextRef.current;
-        
-        // --- Create Synth Effects Chain ---
-        effectsInputRef.current = audioContext.createGain();
-        filterNodeRef.current = audioContext.createBiquadFilter();
-        delayNodeRef.current = audioContext.createDelay(1.0);
-        delayFeedbackRef.current = audioContext.createGain();
-        delaySendRef.current = audioContext.createGain();
-        reverbNodeRef.current = audioContext.createConvolver();
-        reverbSendRef.current = audioContext.createGain();
-        synthMasterGainRef.current = audioContext.createGain();
-        synthPannerNodeRef.current = audioContext.createStereoPanner();
-        
-        // Set initial values from state to prevent clicks or unwanted sounds
-        filterNodeRef.current.type = filterType;
-        filterNodeRef.current.frequency.value = filterCutoff;
-        filterNodeRef.current.Q.value = filterResonance;
-        delayNodeRef.current.delayTime.value = delayTime;
-        delayFeedbackRef.current.gain.value = delayFeedback;
-        delaySendRef.current.gain.value = delayMix;
-        reverbSendRef.current.gain.value = reverbMix;
-        synthMasterGainRef.current.gain.value = synthVolume;
-        synthPannerNodeRef.current.pan.value = synthPan;
+      const audioContext = audioContextRef.current;
 
-        reverbNodeRef.current.buffer = await createReverbImpulseResponse(audioContext);
+      // --- Create Synth Effects Chain ---
+      effectsInputRef.current = audioContext.createGain();
+      filterNodeRef.current = audioContext.createBiquadFilter();
+      delayNodeRef.current = audioContext.createDelay(1.0);
+      delayFeedbackRef.current = audioContext.createGain();
+      delaySendRef.current = audioContext.createGain();
+      reverbNodeRef.current = audioContext.createConvolver();
+      reverbSendRef.current = audioContext.createGain();
+      synthMasterGainRef.current = audioContext.createGain();
+      synthPannerNodeRef.current = audioContext.createStereoPanner();
 
-        // --- Connect Synth Effects Chain ---
-        effectsInputRef.current.connect(filterNodeRef.current);
-        filterNodeRef.current.connect(synthMasterGainRef.current);
-        filterNodeRef.current.connect(delaySendRef.current);
-        delaySendRef.current.connect(delayNodeRef.current);
-        delayNodeRef.current.connect(delayFeedbackRef.current).connect(delayNodeRef.current);
-        delayNodeRef.current.connect(synthMasterGainRef.current);
-        filterNodeRef.current.connect(reverbSendRef.current);
-        reverbSendRef.current.connect(reverbNodeRef.current);
-        reverbNodeRef.current.connect(synthMasterGainRef.current);
-        synthMasterGainRef.current.connect(synthPannerNodeRef.current);
-        synthPannerNodeRef.current.connect(audioContext.destination);
+      // Set initial values from state to prevent clicks or unwanted sounds
+      filterNodeRef.current.type = filterType;
+      filterNodeRef.current.frequency.value = filterCutoff;
+      filterNodeRef.current.Q.value = filterResonance;
+      delayNodeRef.current.delayTime.value = delayTime;
+      delayFeedbackRef.current.gain.value = delayFeedback;
+      delaySendRef.current.gain.value = delayMix;
+      reverbSendRef.current.gain.value = reverbMix;
+      synthMasterGainRef.current.gain.value = synthVolume;
+      synthPannerNodeRef.current.pan.value = synthPan;
 
-        // --- Create Drum Track Channels ---
-        drumTrackChannelsRef.current = [];
-        for (let i = 0; i < NUM_TRACKS; i++) {
-            const gain = audioContext.createGain();
-            gain.gain.value = trackVolumes[i];
-            const panner = audioContext.createStereoPanner();
-            panner.pan.value = trackPans[i];
-            gain.connect(panner).connect(audioContext.destination);
-            drumTrackChannelsRef.current[i] = { gain, panner };
-        }
+      reverbNodeRef.current.buffer = await createReverbImpulseResponse(audioContext);
+
+      // --- Connect Synth Effects Chain ---
+      effectsInputRef.current.connect(filterNodeRef.current);
+      filterNodeRef.current.connect(synthMasterGainRef.current);
+      filterNodeRef.current.connect(delaySendRef.current);
+      delaySendRef.current.connect(delayNodeRef.current);
+      delayNodeRef.current.connect(delayFeedbackRef.current).connect(delayNodeRef.current);
+      delayNodeRef.current.connect(synthMasterGainRef.current);
+      filterNodeRef.current.connect(reverbSendRef.current);
+      reverbSendRef.current.connect(reverbNodeRef.current);
+      reverbNodeRef.current.connect(synthMasterGainRef.current);
+      synthMasterGainRef.current.connect(synthPannerNodeRef.current);
+      synthPannerNodeRef.current.connect(audioContext.destination);
+
+      // --- Create Drum Track Channels ---
+      drumTrackChannelsRef.current = [];
+      for (let i = 0; i < NUM_TRACKS; i++) {
+        const gain = audioContext.createGain();
+        gain.gain.value = trackVolumes[i];
+        const panner = audioContext.createStereoPanner();
+        panner.pan.value = trackPans[i];
+        gain.connect(panner).connect(audioContext.destination);
+        drumTrackChannelsRef.current[i] = { gain, panner };
+      }
     }
   }, [filterType, filterCutoff, filterResonance, delayTime, delayFeedback, delayMix, reverbMix, synthVolume, synthPan, trackVolumes, trackPans]);
 
@@ -155,16 +155,16 @@ export const useSequencer = () => {
     await initAudio();
     const allSounds = Object.values(SOUND_LIBRARY).flat();
     const promises = allSounds.map(async (sound, index) => {
-        try {
-            setLoadingMessage(`Loading samples... (${index + 1}/${allSounds.length})`);
-            const response = await fetch(sound.url);
-            if (!response.ok) throw new Error(`HTTP error! status: ${response.status} for sound URL ${sound.url}`);
-            const arrayBuffer = await response.arrayBuffer();
-            const audioBuffer = await audioContextRef.current!.decodeAudioData(arrayBuffer);
-            buffersRef.current[sound.id] = audioBuffer;
-        } catch (error) {
-            console.error(`Failed to load and decode sound '${sound.id}':`, error);
-        }
+      try {
+        setLoadingMessage(`Loading samples... (${index + 1}/${allSounds.length})`);
+        const response = await fetch(sound.url);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status} for sound URL ${sound.url}`);
+        const arrayBuffer = await response.arrayBuffer();
+        const audioBuffer = await audioContextRef.current!.decodeAudioData(arrayBuffer);
+        buffersRef.current[sound.id] = audioBuffer;
+      } catch (error) {
+        console.error(`Failed to load and decode sound '${sound.id}':`, error);
+      }
     });
     await Promise.all(promises);
   }, [initAudio]);
@@ -203,20 +203,20 @@ export const useSequencer = () => {
   useEffect(() => { if (reverbSendRef.current && audioContextRef.current) reverbSendRef.current.gain.setTargetAtTime(reverbMix, audioContextRef.current.currentTime, 0.01); }, [reverbMix]);
   useEffect(() => { if (synthMasterGainRef.current && audioContextRef.current) synthMasterGainRef.current.gain.setTargetAtTime(synthVolume, audioContextRef.current.currentTime, 0.01); }, [synthVolume]);
   useEffect(() => { if (synthPannerNodeRef.current && audioContextRef.current) synthPannerNodeRef.current.pan.setTargetAtTime(synthPan, audioContextRef.current.currentTime, 0.01); }, [synthPan]);
-  
+
   useEffect(() => {
     trackVolumes.forEach((volume, i) => {
-        if(drumTrackChannelsRef.current[i] && audioContextRef.current) {
-            drumTrackChannelsRef.current[i].gain.gain.setTargetAtTime(volume, audioContextRef.current.currentTime, 0.01);
-        }
+      if (drumTrackChannelsRef.current[i] && audioContextRef.current) {
+        drumTrackChannelsRef.current[i].gain.gain.setTargetAtTime(volume, audioContextRef.current.currentTime, 0.01);
+      }
     });
   }, [trackVolumes]);
 
   useEffect(() => {
     trackPans.forEach((pan, i) => {
-        if(drumTrackChannelsRef.current[i] && audioContextRef.current) {
-            drumTrackChannelsRef.current[i].panner.pan.setTargetAtTime(pan, audioContextRef.current.currentTime, 0.01);
-        }
+      if (drumTrackChannelsRef.current[i] && audioContextRef.current) {
+        drumTrackChannelsRef.current[i].panner.pan.setTargetAtTime(pan, audioContextRef.current.currentTime, 0.01);
+      }
     });
   }, [trackPans]);
 
@@ -239,9 +239,9 @@ export const useSequencer = () => {
     const frequency = getFrequency(noteIndex, noteOctave);
 
     if (!isFinite(frequency)) return;
-    
+
     oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
-    
+
     const gainNode = audioContext.createGain();
     const now = audioContext.currentTime;
     gainNode.gain.setValueAtTime(0, now);
@@ -251,7 +251,7 @@ export const useSequencer = () => {
 
     oscillator.connect(gainNode);
     gainNode.connect(effectsInputRef.current);
-    
+
     oscillator.start(now);
     oscillator.stop(releaseTime);
   }, [synthType]);
@@ -260,16 +260,16 @@ export const useSequencer = () => {
     setCurrentStep((prevStep) => {
       const nextStep = prevStep === null ? 0 : (prevStep + 1) % NUM_STEPS;
       const secondsPerStep = (60 / tempo) / 4;
-      
+
       const anySoloed = soloedTracks.some(s => s);
       drumGrid.forEach((row, soundIndex) => {
-          if (row[nextStep]) {
-              if (!anySoloed || soloedTracks[soundIndex]) {
-                  playSample(selectedSounds[soundIndex], soundIndex);
-              }
+        if (row[nextStep]) {
+          if (!anySoloed || soloedTracks[soundIndex]) {
+            playSample(selectedSounds[soundIndex], soundIndex);
           }
+        }
       });
-      
+
       pianoRollGrid.forEach((row, noteRowIndex) => {
         const noteDurationInSteps = row[nextStep];
         if (noteDurationInSteps > 0) {
@@ -285,7 +285,7 @@ export const useSequencer = () => {
   useEffect(() => {
     if (isPlaying) {
       if (playbackIntervalRef.current) window.clearInterval(playbackIntervalRef.current);
-      const intervalTime = (60 / tempo) * 1000 / 4; 
+      const intervalTime = (60 / tempo) * 1000 / 4;
       playbackIntervalRef.current = window.setInterval(schedulePlayback, intervalTime);
     } else {
       if (playbackIntervalRef.current) {
@@ -296,7 +296,7 @@ export const useSequencer = () => {
     }
     return () => { if (playbackIntervalRef.current) window.clearInterval(playbackIntervalRef.current); };
   }, [isPlaying, tempo, schedulePlayback]);
-  
+
   const handlePlayPause = useCallback(() => {
     if (!isReady) return;
     initAudio();
@@ -306,26 +306,26 @@ export const useSequencer = () => {
   const toggleDrumPad = useCallback((row: number, col: number) => {
     setDrumGrid(prev => prev.map((r, rIndex) => rIndex === row ? r.map((cell, cIndex) => cIndex === col ? !cell : cell) : r));
   }, []);
-  
+
   const togglePianoRollPad = useCallback((row: number, col: number) => {
     setPianoRollGrid((prevGrid) => {
-        const newGrid = prevGrid.map(r => [...r]);
-        let noteStartCol = -1;
-        for (let i = col; i >= 0; i--) {
-            const duration = newGrid[row][i];
-            if (duration > 0 && i + duration > col) {
-                noteStartCol = i;
-                break;
-            }
+      const newGrid = prevGrid.map(r => [...r]);
+      let noteStartCol = -1;
+      for (let i = col; i >= 0; i--) {
+        const duration = newGrid[row][i];
+        if (duration > 0 && i + duration > col) {
+          noteStartCol = i;
+          break;
         }
-        if (noteStartCol !== -1) {
-            newGrid[row][noteStartCol] = 0;
-        } else {
-            const newNoteEnd = col + noteDuration;
-            for (let i = col; i < newNoteEnd && i < NUM_STEPS; i++) if (newGrid[row][i] > 0) newGrid[row][i] = 0;
-            newGrid[row][col] = noteDuration;
-        }
-        return newGrid;
+      }
+      if (noteStartCol !== -1) {
+        newGrid[row][noteStartCol] = 0;
+      } else {
+        const newNoteEnd = col + noteDuration;
+        for (let i = col; i < newNoteEnd && i < NUM_STEPS; i++) if (newGrid[row][i] > 0) newGrid[row][i] = 0;
+        newGrid[row][col] = noteDuration;
+      }
+      return newGrid;
     });
   }, [noteDuration]);
 
@@ -351,18 +351,30 @@ export const useSequencer = () => {
     setReverbMix(0.0);
   }, []);
 
-  const savePattern = useCallback(() => {
-    const pattern: Pattern = { drumGrid, selectedSounds, trackVolumes, trackPans, pianoRollGrid, octave, synthVolume, synthPan, synthType, tempo, filterType, filterCutoff, filterResonance, delayTime, delayFeedback, delayMix, reverbMix };
-    const dataStr = JSON.stringify(pattern, null, 2);
-    const blob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `sequencer-pattern-${Date.now()}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+  const savePattern = useCallback(async (customName: string) => {
+    const pattern: Pattern = {
+      drumGrid,
+      selectedSounds,
+      trackVolumes,
+      trackPans,
+      pianoRollGrid,
+      octave,
+      synthVolume,
+      synthPan,
+      synthType,
+      tempo,
+      filterType,
+      filterCutoff,
+      filterResonance,
+      delayTime,
+      delayFeedback,
+      delayMix,
+      reverbMix
+    };
+
+    // Import and use the utility function
+    const { savePatternWithName } = await import('../utils/patternExport');
+    await savePatternWithName(pattern, customName);
   }, [drumGrid, selectedSounds, trackVolumes, trackPans, pianoRollGrid, octave, synthVolume, synthPan, synthType, tempo, filterType, filterCutoff, filterResonance, delayTime, delayFeedback, delayMix, reverbMix]);
 
   const loadPattern = useCallback((file: File) => {
@@ -403,7 +415,7 @@ export const useSequencer = () => {
     setDrumGrid(pattern.grid);
     setSelectedSounds(pattern.selectedSounds);
     setTrackVolumes(Array.isArray(pattern.trackVolumes) ? pattern.trackVolumes.map(v => safeNumber(v, 0.8)) : Array(NUM_TRACKS).fill(0.8));
-    if(pattern.tempo) setTempo(safeNumber(pattern.tempo, 120));
+    if (pattern.tempo) setTempo(safeNumber(pattern.tempo, 120));
   }, []);
 
   const loadBassPreset = useCallback((pattern: BassPattern) => {
@@ -412,7 +424,7 @@ export const useSequencer = () => {
     setSynthVolume(safeNumber(pattern.synthVolume, 0.5));
     setSynthPan(safeNumber(pattern.synthPan, 0));
     setSynthType(pattern.synthType || 'sawtooth');
-    if(pattern.tempo) setTempo(safeNumber(pattern.tempo, 120));
+    if (pattern.tempo) setTempo(safeNumber(pattern.tempo, 120));
     setFilterType(pattern.filterType || 'lowpass');
     setFilterCutoff(safeNumber(pattern.filterCutoff, 8000));
     setFilterResonance(safeNumber(pattern.filterResonance, 1));
@@ -425,7 +437,7 @@ export const useSequencer = () => {
   const handleSoundChange = useCallback((trackIndex: number, newSound: DrumSound) => {
     setSelectedSounds(prev => prev.map((s, i) => i === trackIndex ? newSound : s));
   }, []);
-  
+
   const handleTrackVolumeChange = useCallback((trackIndex: number, newVolume: number) => {
     setTrackVolumes(prev => prev.map((v, i) => i === trackIndex ? newVolume : v));
   }, []);
@@ -451,63 +463,63 @@ export const useSequencer = () => {
     source.start();
     previewSourceRef.current = source;
   }, []);
-  
+
   const handleStopPreview = useCallback(() => {
     if (previewSourceRef.current) {
-        previewSourceRef.current.stop(audioContextRef.current!.currentTime + 0.01);
-        previewSourceRef.current = null;
+      previewSourceRef.current.stop(audioContextRef.current!.currentTime + 0.01);
+      previewSourceRef.current = null;
     }
   }, []);
 
   const handleOctaveChange = useCallback((newOctave: number) => {
     if (isFinite(newOctave)) {
-        setOctave(Math.max(0, Math.min(8, newOctave)));
+      setOctave(Math.max(0, Math.min(8, newOctave)));
     }
   }, []);
 
   return {
     isReady,
     initialize,
-    isLoading, 
-    loadingMessage, 
-    isPlaying, 
-    tempo, 
+    isLoading,
+    loadingMessage,
+    isPlaying,
+    tempo,
     currentStep,
-    drumGrid, 
-    selectedSounds, 
-    trackVolumes, 
+    drumGrid,
+    selectedSounds,
+    trackVolumes,
     trackPans,
     soloedTracks,
-    pianoRollGrid, 
-    octave, 
+    pianoRollGrid,
+    octave,
     synthVolume,
-    synthPan, 
-    synthType, 
+    synthPan,
+    synthType,
     noteDuration,
-    filterType, 
-    filterCutoff, 
-    filterResonance, 
-    delayTime, 
-    delayFeedback, 
-    delayMix, 
+    filterType,
+    filterCutoff,
+    filterResonance,
+    delayTime,
+    delayFeedback,
+    delayMix,
     reverbMix,
-    handlePlayPause, 
-    handleTempoChange: setTempo, 
-    clearPattern, 
-    savePattern, 
+    handlePlayPause,
+    handleTempoChange: setTempo,
+    clearPattern,
+    savePattern,
     loadPattern,
-    loadDrumPreset, 
+    loadDrumPreset,
     loadBassPreset,
-    toggleDrumPad, 
-    handleSoundChange, 
-    handleTrackVolumeChange, 
+    toggleDrumPad,
+    handleSoundChange,
+    handleTrackVolumeChange,
     handleTrackPanChange,
-    handleSoloTrack, 
-    handlePreviewSample, 
+    handleSoloTrack,
+    handlePreviewSample,
     handleStopPreview,
-    togglePianoRollPad, 
-    handleOctaveChange, 
-    handleSynthVolumeChange: setSynthVolume, 
+    togglePianoRollPad,
+    handleOctaveChange,
+    handleSynthVolumeChange: setSynthVolume,
     handleSynthPanChange: setSynthPan,
     handleSynthTypeChange: setSynthType,
     handleNoteDurationChange: setNoteDuration,
